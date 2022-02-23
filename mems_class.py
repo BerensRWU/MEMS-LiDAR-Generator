@@ -72,7 +72,7 @@ def intrinsic_from_fov(height, width, fov=90):
     Basic Pinhole Camera Model
     intrinsic params from fov and sensor width and height in pixels
     Returns:
-        K:      [4, 4]
+        K:      [3, 3]
     """
     px, py = (width / 2, height / 2)
     hfov = fov / 360. * 2. * np.pi
