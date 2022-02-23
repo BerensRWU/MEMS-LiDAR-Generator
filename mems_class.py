@@ -88,7 +88,7 @@ def intrinsic_from_fov(height, width, fov=90):
 
 class MEMS_Sensor(object):
     def __init__(self, parent_actor, carla_transform, image_width = 800, vfov = 30, hfov = 90, n_scan_lines = 100,
-                 n_of_points = 100000, max_range = 100, out_root = "out/MEMS", tick = 1):
+                 n_of_points = 100000, max_range = 100, out_root = "out/MEMS", add_noise = True):
         """
         Class for MEMS Sensor
         """
@@ -97,6 +97,7 @@ class MEMS_Sensor(object):
         self.out_root = out_root
         self.sensor = None
         self.frame = 0
+        self.add_noise = add_noise
         self.parent = parent_actor
         self.max_range = max_range
         self.carla_transform = carla_transform
@@ -149,6 +150,10 @@ class MEMS_Sensor(object):
         self.lidar_pc = self.lidar_pc[[2,0,1]]
         self.lidar_pc[2] *= -1
         self.rot_transl_pc()
+        
+        if self.add_noise:
+            self.noise()
+            
         return self.lidar_pc
 
     def destroy(self):
@@ -163,7 +168,17 @@ class MEMS_Sensor(object):
                                degrees=True).as_matrix()
         self.lidar_pc = np.dot(rot_mat, self.lidar_pc)
         self.lidar_pc = (self.lidar_pc.T + [self.carla_transform.location.x, self.carla_transform.location.y, self.carla_transform.location.z]).T
-
+    
+    def noise(self):
+        """
+        Add some noise on the data.
+        """
+        # Randomly dropping Points
+        self.lidar_pc = self.lidar_pc[:,np.random.choice(self.lidar_pc.shape[1], np.int32(self.lidar_pc.shape[1]*0.95), replace=False)]
+        
+        # Disturb each point along the vector of its raycast
+        self.lidar_pc += self.lidar_pc * np.random.normal(0, 0.005, self.lidar_pc.shape[1])
+        
     @staticmethod
     def in_meters(depth_map):
         """
