@@ -133,6 +133,7 @@ class World(object):
         self.recording_enabled = False
         self.recording_start = 0
         self.constant_velocity_enabled = False
+        self.mems_out_dir = args.out_dir
 
     def restart(self):
         # Keep same camera config if the camera manager exists.
@@ -174,7 +175,8 @@ class World(object):
     def toggle_MEMS(self):
         if self.mems_sensor is None:
             self.mems_sensor = MEMS_Sensor(self.player, carla.Transform(
-                carla.Location(x=-3.5, z=2.5), carla.Rotation(pitch=5)))
+                carla.Location(x=-3.5, z=2.5), carla.Rotation(pitch=5)),
+                out_root = self.mems_out_dir)
         elif self.mems_sensor is not None:
             self.mems_sensor.destroy()
             self.mems_sensor = None
@@ -593,6 +595,11 @@ def main():
         metavar='WIDTHxHEIGHT',
         default='1280x720',
         help='window resolution (default: 1280x720)')
+    argparser.add_argument(
+        '--out_dir',
+        default='out/MEMS/',
+        help='Directory where to save the Data.')
+    
     args = argparser.parse_args()
 
     args.width, args.height = [int(x) for x in args.res.split('x')]
@@ -603,7 +610,11 @@ def main():
     logging.info('listening to server %s:%s', args.host, args.port)
 
     print(__doc__)
-
+    
+    if not os.path.isdir(args.out_dir):
+        os.makedirs(args.out_dir)
+        print(f"Created {args.out_dir} Directory.")
+    
     try:
 
         game_loop(args)
