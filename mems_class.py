@@ -87,8 +87,9 @@ def intrinsic_from_fov(height, width, fov=90):
                      [0., 0., 0., 1.]])
 
 class MEMS_Sensor(object):
-    def __init__(self, parent_actor, carla_transform, image_width = 800, vfov = 30, hfov = 90, n_scan_lines = 100,
-                 n_of_points = 100000, max_range = 100, out_root = "out/MEMS", add_noise = True):
+    def __init__(self, parent_actor, carla_transform, image_width = 800, v_fov = 30, h_fov_total = 90, 
+                 h_fov_pc = 70, n_scan_lines = 100, n_points_pattern = 100000, 
+                 max_range = 100, out_root = "out/MEMS", add_noise = True):
         """
         Class for MEMS Sensor
         """
@@ -105,23 +106,23 @@ class MEMS_Sensor(object):
         world = self.parent.get_world()
         
         # Calculates the image height from the field of view and the image width
-        image_height = np.tan(vfov * np.pi / 180 / 2) / np.tan(hfov * np.pi / 180 / 2) * image_width
+        image_height = np.tan(v_fov * np.pi / 180 / 2) / np.tan(h_fov_total * np.pi / 180 / 2) * image_width
         
         # Intrinsic Matrix of the Camera
-        self.K = intrinsic_from_fov(image_height, image_width, hfov)
+        self.K = intrinsic_from_fov(image_height, image_width, h_fov_total)
         self.K_inv = np.linalg.inv(self.K)
         
         # Scan Pattern of the MEMS Sensor
         self.pixel_coords_scan_pattern = MEMS_Sensor.scan_pattern(n_scan_lines = n_scan_lines, 
-                                            n_of_points = n_of_points,
+                                            n_points_pattern = n_points_pattern,
                                             width = image_width, height = image_height,
-                                            h_fov = hfov, v_fov = vfov)
+                                            h_fov_total = h_fov_total, h_fov_pc = h_fov_pc, v_fov = v_fov)
         
         # Spawn of a depth map sensor
         sensor = world.get_blueprint_library().find('sensor.camera.depth')
         sensor.set_attribute('image_size_x',str(image_width))
         sensor.set_attribute('image_size_y',str(image_height))
-        sensor.set_attribute('fov',str(hfov))
+        sensor.set_attribute('fov',str(h_fov_total))
         self.sensor = world.spawn_actor(sensor, self.carla_transform, attach_to = parent_actor)
         
         # Starts the recording
@@ -206,32 +207,31 @@ class MEMS_Sensor(object):
         return depth_map
 
     @staticmethod
-    def scan_pattern(n_scan_lines, n_of_points, width, height, h_fov = 70, v_fov = 30, ramp_function = r_0, f = 150):
+    def scan_pattern(n_scan_lines, n_points_pattern, width, height, h_fov_total = 80, h_fov_pc = 70, v_fov = 30, ramp_function = r_0, f = 150):
         """
         See: https://docs.blickfeld.com/cube/v1.0.1/scan_pattern.html
         Generates the scan pattern.
         Input:
             n_scan_lines - Number of scan lines
-            n_of_points - Number of points
+            n_points_pattern - Number of points on the total scan pattern
             width - depth map width (influences the accuracy)
             height - depth map height (influences the accuracy)
-            h_fov - horizontal field of view
+            h_fov_total - horizontal field of view of the scan patter in total
+            h_fov_pc - horizontal field of view of the point cloud
             v_fov - vertical field of view
             ramp_function - Ramp Function
             f - eigenfrequency
         
         Returns:
-            [3, n_of_points]
             Coordinates of the points on the depth image.
         """
         T = n_scan_lines / 2 / f
-        t_list = np.arange(0, T, T / n_of_points)
+        t_list = np.arange(0, T, T / n_points_pattern)
         
-        h_mirror_list = np.array([h_mirror(t, t_h_max = h_fov, f = f) for t in t_list])
+        h_mirror_list = np.array([h_mirror(t, t_h_max = h_fov_total, f = f) for t in t_list])
         v_mirror_list = np.array([v_mirror(t, t_v_max = v_fov, f = f, T = T, ramp_function = ramp_function) for t in t_list])
-        
-        x = width / (h_fov) * (h_mirror_list + h_fov / 2) - 1
-        y = height / (v_fov) * (v_mirror_list + v_fov / 2) - 1
+        x = (width / (h_fov_total) * (h_mirror_list + h_fov_total / 2) - 1)[(h_mirror_list > - h_fov_pc / 2) & (h_mirror_list < h_fov_pc / 2)]
+        y = (height / (v_fov) * (v_mirror_list + v_fov / 2) - 1)[(h_mirror_list > - h_fov_pc / 2) & (h_mirror_list < h_fov_pc / 2)]
         
         return np.vstack((x.flatten(), y.flatten(), np.ones_like(x.flatten())))
 
