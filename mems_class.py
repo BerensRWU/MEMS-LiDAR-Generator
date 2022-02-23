@@ -81,10 +81,9 @@ def intrinsic_from_fov(height, width, fov=90):
     vfov = 2. * np.arctan(np.tan(hfov / 2) * height / width)
     fy = height / (2. * np.tan(vfov / 2.))
 
-    return np.array([[fx, 0, px, 0.],
-                     [0, fy, py, 0.],
-                     [0, 0, 1., 0.],
-                     [0., 0., 0., 1.]])
+    return np.array([[fx, 0, px],
+                     [0, fy, py],
+                     [0., 0., 1.]])
 
 class MEMS_Sensor(object):
     def __init__(self, parent_actor, carla_transform, image_width = 800, v_fov = 30, h_fov_total = 90, 
@@ -163,6 +162,9 @@ class MEMS_Sensor(object):
             self.sensor.destroy()
             
     def rot_transl_pc(self):
+        """
+        Rotates and translates the point cloud such that it is in the coordinate system of the vehicle.
+        """
         rot_mat = R.from_euler("xyz",[self.parent.get_transform().rotation.roll - self.sensor.get_transform().rotation.roll, # roll
                                       self.parent.get_transform().rotation.pitch - self.sensor.get_transform().rotation.pitch, # pitch
                                       - self.parent.get_transform().rotation.yaw + self.sensor.get_transform().rotation.yaw], # yaw
