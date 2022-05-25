@@ -13,4 +13,6 @@ doi = "10.36227/techrxiv.19615563.v2" }
 ```
 ### Example Recording
 
+<img src="https://github.com/BerensRWU/MEMS-LiDAR-Generator/blob/main/image_with_points.png" width="800" height="600">
+
 <img src="https://github.com/BerensRWU/MEMS-LiDAR-Generator/blob/main/Record.gif" width="800" height="400">
